@@ -1,0 +1,15 @@
+services:
+  # Cron Job：每天早上 9:00 (UTC+8 = 01:00 UTC) 執行
+  - type: cron
+    name: mlb-fantasy-linebot
+    runtime: python
+    schedule: "0 1 * * *"      # UTC 01:00 = 台灣時間 09:00
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: YAHOO_LEAGUE_ID
+        sync: false            # 在 Render 後台手動填入
+      - key: LINE_CHANNEL_ACCESS_TOKEN
+        sync: false
+      - key: LINE_USER_ID
+        sync: false

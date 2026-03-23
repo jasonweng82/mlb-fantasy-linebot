@@ -1,0 +1,5 @@
+yahoo-fantasy-api
+yahoo-oauth
+line-bot-sdk
+requests
+python-dotenv
