@@ -12,17 +12,27 @@ import os
 LEAGUE_ID = os.getenv("YAHOO_LEAGUE_ID")
 
 def main():
-    # 抓取所有球員資料
     all_players = get_all_teams_stats(LEAGUE_ID)
 
-    # 判斷是否有資料
     if not all_players or len(all_players) == 0:
         reply = "⚾ 今日無成績"
     else:
         analysis = analyze_league(all_players)
-        reply = build_report(analysis)
+        report = build_report(analysis)
 
-    # 推送到 LINE
+        # 計算隊伍總分
+        team_scores = {}
+        for p in all_players:
+            team = p["team"]
+            fpts = p.get("fpts", 0)
+            team_scores[team] = team_scores.get(team, 0) + fpts
+
+        # 排序取 TOP3
+        top3 = sorted(team_scores.items(), key=lambda x: x[1], reverse=True)[:3]
+        top3_text = "\n".join([f"{i+1}. {team} {score} pts" for i, (team, score) in enumerate(top3)])
+
+        reply = f"{report}\n\n🏆 今日隊伍 TOP3\n{top3_text}"
+
     push_message(reply)
 
 if __name__ == "__main__":
