@@ -4,9 +4,8 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 from linebot.exceptions import InvalidSignatureError
 
-from report_builder import build_report
 from yahoo_client import get_all_teams_stats
-from analyzer import analyze_league
+from analyzer import analyze_league, build_report
 
 app = Flask(__name__)
 
