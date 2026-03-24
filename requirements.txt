@@ -3,3 +3,5 @@ yahoo-oauth
 line-bot-sdk
 requests
 python-dotenv
+flask
+line-bot-sdk
