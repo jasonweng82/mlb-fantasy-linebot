@@ -7,33 +7,31 @@ from dotenv import load_dotenv
 from yahoo_client import get_all_teams_stats
 from analyzer import analyze_league, build_report
 from line_client import push_message
-import os
 
-LEAGUE_ID = os.getenv("YAHOO_LEAGUE_ID")
+load_dotenv()
+LEAGUE_ID = os.environ["YAHOO_LEAGUE_ID"]
 
 def main():
+    print("🚀 開始執行 MLB Fantasy 戰報...")
+
+    print("📊 抓取聯盟所有球員成績...")
     all_players = get_all_teams_stats(LEAGUE_ID)
 
-    if not all_players or len(all_players) == 0:
-        reply = "⚾ 今日無成績"
-    else:
-        analysis = analyze_league(all_players)
-        report = build_report(analysis)
+    if not all_players:
+        push_message("⚾ 昨日沒有成績資料，可能是休賽日。")
+        return
 
-        # 計算隊伍總分
-        team_scores = {}
-        for p in all_players:
-            team = p["team"]
-            fpts = p.get("fpts", 0)
-            team_scores[team] = team_scores.get(team, 0) + fpts
+    print(f"✅ 共取得 {len(all_players)} 位球員的成績")
 
-        # 排序取 TOP3
-        top3 = sorted(team_scores.items(), key=lambda x: x[1], reverse=True)[:3]
-        top3_text = "\n".join([f"{i+1}. {team} {score} pts" for i, (team, score) in enumerate(top3)])
+    analysis = analyze_league(all_players)
+    report   = build_report(analysis)
 
-        reply = f"{report}\n\n🏆 今日隊伍 TOP3\n{top3_text}"
+    print("\n" + "="*40)
+    print(report)
+    print("="*40 + "\n")
 
-    push_message(reply)
+    push_message(report)
+    print("✅ 完成！")
 
 if __name__ == "__main__":
     main()
