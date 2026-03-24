@@ -1,7 +1,6 @@
-yahoo-fantasy-api
-yahoo-oauth
-line-bot-sdk
-requests
-python-dotenv
 flask
 line-bot-sdk
+yahoo-fantasy-api
+yahoo-oauth
+requests
+python-dotenv
