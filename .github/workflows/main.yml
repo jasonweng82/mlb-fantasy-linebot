@@ -1,0 +1,34 @@
+name: MLB Fantasy 每日戰報
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # UTC 06:00 = 台灣時間 14:00
+  workflow_dispatch:        # 允許手動觸發
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install yahoo-fantasy-api yahoo-oauth requests python-dotenv line-bot-sdk requests-oauthlib
+
+      - name: Write oauth2.json
+        run: echo '${{ secrets.OAUTH2_JSON }}' > oauth2.json
+
+      - name: Write .env
+        run: |
+          echo "YAHOO_LEAGUE_ID=${{ secrets.YAHOO_LEAGUE_ID }}" > .env
+          echo "LINE_CHANNEL_ACCESS_TOKEN=${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}" >> .env
+          echo "LINE_USER_ID=${{ secrets.LINE_USER_ID }}" >> .env
+
+      - name: Run report
+        run: python main.py
