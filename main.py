@@ -2,6 +2,7 @@
 MLB Fantasy LINE Bot — 主程式
 """
 import os
+import sys
 from dotenv import load_dotenv
 
 from yahoo_client import get_all_teams_stats
@@ -34,4 +35,12 @@ def main():
     print("✅ 完成！")
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1:
+        cmd = sys.argv[1].strip()
+        if cmd in ["今日", "戰報"]:
+            main()
+        else:
+            print(f"未知指令: {cmd}")
+    else:
+        main()
+
