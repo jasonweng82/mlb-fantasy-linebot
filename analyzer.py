@@ -80,3 +80,28 @@ def build_report(analysis: dict) -> str:
         lines.append(f"{team_medals[i]} {team_name}：{score:+.1f} 分")
 
     return "\n".join(lines)
+def debug_report(all_players: list) -> str:
+    if not all_players:
+        return "⚾ 沒有抓到任何球員資料。"
+
+    total_players = len(all_players)
+
+    # 計算隊伍總分
+    team_scores = {}
+    for p in all_players:
+        t = p["team_name"]
+        team_scores[t] = team_scores.get(t, 0) + p["score"]
+
+    # 排序取 TOP3
+    team_top3 = sorted(team_scores.items(), key=lambda x: x[1], reverse=True)[:3]
+
+    # 組合訊息
+    lines = [
+        f"🔍 Debug 模式",
+        f"📊 抓到 {total_players} 位球員",
+        "🏅 隊伍得分 TOP3"
+    ]
+    for i, (team_name, score) in enumerate(team_top3):
+        lines.append(f"{i+1}. {team_name}：{score:+.1f} 分")
+
+    return "\n".join(lines)
