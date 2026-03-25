@@ -24,7 +24,11 @@ def main():
     print(f"✅ 共取得 {len(all_players)} 位球員的成績")
 
     analysis = analyze_league(all_players)
-    report   = build_report(analysis)
+
+    # Debug：確認 team_top3 有正確產生
+    print(f"🏅 team_top3: {analysis['team_top3']}")
+
+    report = build_report(analysis)
 
     print("\n" + "="*40)
     print(report)
