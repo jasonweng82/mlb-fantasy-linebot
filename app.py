@@ -52,7 +52,7 @@ def handle_message(event):
 
     # 其他訊息
    
-    )
+return
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
