@@ -105,3 +105,73 @@ def debug_report(all_players: list) -> str:
         lines.append(f"{i+1}. {team_name}：{score:+.1f} 分")
 
     return "\n".join(lines)
+def analyze_weekly(all_players: list) -> dict:
+    if not all_players:
+        return {}
+
+    weekly_stats = {}
+    for p in all_players:
+        team = p["team_name"]
+        if team not in weekly_stats:
+            weekly_stats[team] = {"HR":0, "BB":0, "SB":0, "K_bat":0,
+                                  "K_pitch":0, "W":0, "SV":0,
+                                  "ER":0, "IP":0, "ERA":0.0}
+
+        # 打者數據
+        weekly_stats[team]["HR"] += p.get("HR", 0)
+        weekly_stats[team]["BB"] += p.get("BB", 0)
+        weekly_stats[team]["SB"] += p.get("SB", 0)
+        weekly_stats[team]["K_bat"] += p.get("K_bat", 0)
+
+        # 投手數據
+        weekly_stats[team]["K_pitch"] += p.get("K_pitch", 0)
+        weekly_stats[team]["W"] += p.get("W", 0)
+        weekly_stats[team]["SV"] += p.get("SV", 0)
+        weekly_stats[team]["ER"] += p.get("ER", 0)
+        weekly_stats[team]["IP"] += p.get("IP", 0)
+
+    # 計算 ERA
+    for team, stats in weekly_stats.items():
+        if stats["IP"] > 0:
+            stats["ERA"] = stats["ER"] * 9 / stats["IP"]
+
+    # 找出各項目最高隊伍
+    def top_team(key, reverse=True):
+        return max(weekly_stats.items(),
+                   key=lambda x: x[1][key] if key!="ERA" else (-x[1][key] if reverse else x[1][key]))
+
+    return {
+        "HR": top_team("HR"),
+        "BB": top_team("BB"),
+        "SB": top_team("SB"),
+        "K_bat": top_team("K_bat"),
+        "K_pitch": top_team("K_pitch"),
+        "W": top_team("W"),
+        "SV": top_team("SV"),
+        "ERA": top_team("ERA", reverse=False),  # ERA 越低越好
+    }
+
+
+def build_weekly_report(weekly: dict, records: dict=None) -> str:
+    if not weekly:
+        return "📅 本週沒有成績資料。"
+
+    lines = ["📅 MLB Fantasy 本週統計", ""]
+
+    # 打者
+    lines.append("⚾ 打者")
+    lines.append(f"💥 轟轟轟 {weekly['HR'][0]} 本週 {weekly['HR'][1]['HR']} HR" +
+                 (" 🔔破聯盟紀錄" if records and weekly['HR'][1]['HR'] > records.get('HR',0) else ""))
+    lines.append(f"👀 選球眼 {weekly['BB'][0]} 本週 {weekly['BB'][1]['BB']} BB")
+    lines.append(f"🏃 盜盜盜 {weekly['SB'][0]} 本週 {weekly['SB'][1]['SB']} SB")
+    lines.append(f"🥲 呷K少年家 {weekly['K_bat'][0]} 本週吞 {weekly['K_bat'][1]['K_bat']} K")
+    lines.append("")
+
+    # 投手
+    lines.append("⚾ 投手")
+    lines.append(f"🔫 三振槍 {weekly['K_pitch'][0]} 本週 {weekly['K_pitch'][1]['K_pitch']} K")
+    lines.append(f"🏆 勝投王 {weekly['W'][0]} 本週 {weekly['W'][1]['W']} W")
+    lines.append(f"🔒 終結者 {weekly['SV'][0]} 本週 {weekly['SV'][1]['SV']} SV")
+    lines.append(f"⛽ 油罐車 {weekly['ER'][0]} 本週 ER {weekly['ER'][1]['ER']:.2f}")
+
+    return "\n".join(lines)
