@@ -113,9 +113,11 @@ def analyze_weekly(all_players: list) -> dict:
     for p in all_players:
         team = p["team_name"]
         if team not in weekly_stats:
-            weekly_stats[team] = {"HR":0, "BB":0, "SB":0, "K_bat":0,
-                                  "K_pitch":0, "W":0, "SV":0,
-                                  "ER":0, "IP":0, "ERA":0.0}
+            weekly_stats[team] = {
+                "HR":0, "BB":0, "SB":0, "K_bat":0,
+                "K_pitch":0, "W":0, "SV":0,
+                "ER":0
+            }
 
         # 打者數據
         weekly_stats[team]["HR"] += p.get("HR", 0)
@@ -128,17 +130,10 @@ def analyze_weekly(all_players: list) -> dict:
         weekly_stats[team]["W"] += p.get("W", 0)
         weekly_stats[team]["SV"] += p.get("SV", 0)
         weekly_stats[team]["ER"] += p.get("ER", 0)
-        weekly_stats[team]["IP"] += p.get("IP", 0)
-
-    # 計算 ERA
-    for team, stats in weekly_stats.items():
-        if stats["IP"] > 0:
-            stats["ERA"] = stats["ER"] * 9 / stats["IP"]
 
     # 找出各項目最高隊伍
-    def top_team(key, reverse=True):
-        return max(weekly_stats.items(),
-                   key=lambda x: x[1][key] if key!="ERA" else (-x[1][key] if reverse else x[1][key]))
+    def top_team(key):
+        return max(weekly_stats.items(), key=lambda x: x[1][key])
 
     return {
         "HR": top_team("HR"),
@@ -148,7 +143,7 @@ def analyze_weekly(all_players: list) -> dict:
         "K_pitch": top_team("K_pitch"),
         "W": top_team("W"),
         "SV": top_team("SV"),
-        "ERA": top_team("ERA", reverse=False),  # ERA 越低越好
+        "ER": top_team("ER"),   # ⛽ 油罐車 → 掉最多分
     }
 
 
@@ -172,6 +167,6 @@ def build_weekly_report(weekly: dict, records: dict=None) -> str:
     lines.append(f"🔫 三振槍 {weekly['K_pitch'][0]} 本週 {weekly['K_pitch'][1]['K_pitch']} K")
     lines.append(f"🏆 勝投王 {weekly['W'][0]} 本週 {weekly['W'][1]['W']} W")
     lines.append(f"🔒 終結者 {weekly['SV'][0]} 本週 {weekly['SV'][1]['SV']} SV")
-    lines.append(f"⛽ 油罐車 {weekly['ER'][0]} 本週 ER {weekly['ER'][1]['ER']:.2f}")
+    lines.append(f"⛽ 油罐車 {weekly['ER'][0]} 本週掉 {weekly['ER'][1]['ER']} 分")
 
     return "\n".join(lines)
