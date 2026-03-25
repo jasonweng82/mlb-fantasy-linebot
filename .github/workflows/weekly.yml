@@ -21,6 +21,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Debug analyzer functions
+        run: |
+          python - << 'EOF'
+          import analyzer
+          print("Functions in analyzer:", dir(analyzer))
+          EOF
+
       - name: Run weekly report
         env:
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
