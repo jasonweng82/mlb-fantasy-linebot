@@ -81,10 +81,15 @@ def get_all_teams_stats(league_id, token_file="oauth2.json"):
 
     print("找到 " + str(len(team_keys)) + " 支隊伍")
 
-    # Step 2: 每隊抓球員 + 昨日得分
+    # Step 2: 每隊抓球員 + 昨日得分（含 player_points 取得正確 Fantasy 積分）
     for team_key in team_keys:
         meta = team_meta[team_key]
-        url = BASE_URL + "/team/" + team_key + "/roster/players/stats;type=date;date=" + yesterday + "?format=json"
+        url = (
+            BASE_URL
+            + "/team/" + team_key
+            + "/roster/players/stats;type=date;date=" + yesterday
+            + "?format=json"
+        )
 
         try:
             data = _api_get(url, creds, token_file)
@@ -109,24 +114,27 @@ def get_all_teams_stats(league_id, token_file="oauth2.json"):
                 if pos in ("BN", "IL", "NA"):
                     continue
 
-                stats_list = p_stats.get("player_stats", {}).get("stats", [])
+                # ✅ 正確取法：直接讀 Fantasy 積分，不加總原始數據
                 score = 0.0
-                for s in stats_list:
-                    val = s.get("stat", {}).get("value", "0")
-                    if val not in ("-", "", None) and _is_number(val):
-                        score += float(val)
+                try:
+                    fp_total = p_stats.get("player_points", {}).get("total", None)
+                    if fp_total not in (None, "-", ""):
+                        score = round(float(fp_total), 1)
+                except (TypeError, ValueError):
+                    score = 0.0
 
                 all_players.append({
                     "team_name": meta["team_name"],
                     "manager":   meta["manager"],
                     "player":    name,
                     "position":  pos,
-                    "score":     round(score, 1),
+                    "score":     score,
                     "date":      yesterday,
                 })
-            except Exception as e:
+            except Exception:
                 continue
 
+    print(f"共取得 {len(all_players)} 位球員的成績")
     return all_players
 
 
