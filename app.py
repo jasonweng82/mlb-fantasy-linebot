@@ -51,9 +51,7 @@ def handle_message(event):
         return
 
     # 其他訊息
-    line_bot_api.reply_message(
-        event.reply_token,
-        TextSendMessage(text="請輸入『今日』或『戰報』，或輸入『debug』查看分析狀態。")
+   
     )
 
 if __name__ == "__main__":
