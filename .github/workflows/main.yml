@@ -2,7 +2,7 @@ name: MLB Fantasy 每日戰報
 
 on:
   schedule:
-    - cron: '0 7 * * *'   # UTC 06:00 = 台灣時間 14:00
+    - cron: '0 6 * * *'   # UTC 06:00 = 台灣時間 14:00
   workflow_dispatch:        # 允許手動觸發
 
 jobs:
