@@ -119,19 +119,19 @@ def analyze_weekly(all_players: list) -> dict:
                 "ER":0
             }
 
-        # 打者數據
+        # 打者總結
         weekly_stats[team]["HR"] += p.get("HR", 0)
         weekly_stats[team]["BB"] += p.get("BB", 0)
         weekly_stats[team]["SB"] += p.get("SB", 0)
         weekly_stats[team]["K_bat"] += p.get("K_bat", 0)
 
-        # 投手數據
+        # 投手總結
         weekly_stats[team]["K_pitch"] += p.get("K_pitch", 0)
         weekly_stats[team]["W"] += p.get("W", 0)
         weekly_stats[team]["SV"] += p.get("SV", 0)
         weekly_stats[team]["ER"] += p.get("ER", 0)
 
-    # 找出各項目最高隊伍
+    # 投出各項目最高球隊
     def top_team(key):
         return max(weekly_stats.items(), key=lambda x: x[1][key])
 
