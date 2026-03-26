@@ -87,7 +87,7 @@ def get_all_teams_stats(league_id, token_file="oauth2.json"):
         url = (
             BASE_URL
             + "/team/" + team_key
-            + "/roster/players/stats;type=date;date=" + yesterday
+            + "/roster/players/stats;type=date;date=" + today
             + "?format=json"
         )
 
@@ -133,7 +133,7 @@ def get_all_teams_stats(league_id, token_file="oauth2.json"):
                     "player":    name,
                     "position":  pos,
                     "score":     score,
-                    "date":      yesterday,
+                    "date":      today,
                 })
             except Exception:
                 continue
