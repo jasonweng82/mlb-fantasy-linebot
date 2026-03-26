@@ -121,46 +121,4 @@ def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
             print("=== END ===")
             break
            
-                if pos in ("BN", "IL", "NA"):
-                    continue
-
-                # 分數：優先用 player_points，備用加總 player_stats
-                score = 0.0
-                try:
-                    # player_points 結構：{"player_points": {"coverage_type": "date", "date": "...", "total": "3.5"}}
-                    pp = p_stats.get("player_points", {})
-                    total = pp.get("total", None)
-                    if total not in (None, "-", ""):
-                        score = round(float(total), 1)
-                    else:
-                        # 備用：加總 player_stats
-                        stats_list = p_stats.get("player_stats", {}).get("stats", [])
-                        for s in stats_list:
-                            val = s.get("stat", {}).get("value", "0")
-                            if val not in ("-", "", None) and _is_number(val):
-                                score += float(val)
-                        score = round(score, 1)
-                except (TypeError, ValueError):
-                    score = 0.0
-
-                all_players.append({
-                    "team_name": meta["team_name"],
-                    "manager":   meta["manager"],
-                    "player":    name,
-                    "position":  pos,
-                    "score":     score,
-                    "date":      target_date,
-                })
-            except Exception:
-                continue
-
-    print(f"共取得 {len(all_players)} 位球員的成績")
-    return all_players
-
-
-def _is_number(val):
-    try:
-        float(val)
-        return True
-    except (TypeError, ValueError):
-        return False
+                
