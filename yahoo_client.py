@@ -114,6 +114,12 @@ def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
             continue
 
         for j in range(player_count):
+            if j == 0:
+                import json
+                print("=== RAW ===")
+                print(json.dumps(players_raw["0"], indent=2, ensure_ascii=False))
+                print("=== END ===")
+                break
             try:
                 p = players_raw[str(j)]["player"]
                 p_info  = p[0]
