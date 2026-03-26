@@ -61,7 +61,7 @@ def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
     elif date == "today":
         target_date = datetime.now().strftime("%Y-%m-%d")
     else:
-        target_date = date  # 直接傳入日期字串
+        target_date = date
 
     print(f"查詢日期：{target_date}")
 
@@ -114,22 +114,25 @@ def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
             continue
 
         for j in range(player_count):
-            if j == 0:
-                import json
-                print("=== RAW ===")
-                print(json.dumps(players_raw["0"], indent=2, ensure_ascii=False))
-                print("=== END ===")
-                break
             try:
                 p = players_raw[str(j)]["player"]
                 p_info  = p[0]
                 p_stats = p[1] if len(p) > 1 else {}
 
-                name = next((x["full"] for x in p_info if isinstance(x, dict) and "full" in x), "未知")
-                pos  = next(
-                    (x["selected_position"][1]["position"] for x in p_info if isinstance(x, dict) and "selected_position" in x),
-                    "?"
-                )
+                # ✅ 修正：name 在 {"name": {"full": "..."}} 這層
+                name_dict = next((x["name"] for x in p_info if isinstance(x, dict) and "name" in x), {})
+                name = name_dict.get("full", "未知") if isinstance(name_dict, dict) else "未知"
+
+                # ✅ 修正：position 在 selected_position 裡
+                pos = "?"
+                for x in p_info:
+                    if isinstance(x, dict) and "selected_position" in x:
+                        sp = x["selected_position"]
+                        for item in sp:
+                            if isinstance(item, dict) and "position" in item:
+                                pos = item["position"]
+                                break
+                        break
 
                 if pos in ("BN", "IL", "NA"):
                     continue
