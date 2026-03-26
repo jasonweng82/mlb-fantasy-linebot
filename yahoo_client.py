@@ -118,7 +118,12 @@ def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
                 p = players_raw[str(j)]["player"]
                 p_info  = p[0]
                 p_stats = p[1] if len(p) > 1 else {}
-
+                if j == 0:
+                    import json
+                    print("=== P_STATS ===")
+                    print(json.dumps(p_stats, indent=2, ensure_ascii=False))
+                    print("=== END ===")
+                    break
                 # 球員名字：{"name": {"full": "..."}}
                 name_dict = next((x["name"] for x in p_info if isinstance(x, dict) and "name" in x), {})
                 name = name_dict.get("full", "未知") if isinstance(name_dict, dict) else "未知"
