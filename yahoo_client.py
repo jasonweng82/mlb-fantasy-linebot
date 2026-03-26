@@ -62,11 +62,12 @@ def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
         target_date = datetime.now().strftime("%Y-%m-%d")
     else:
         target_date = date  # 直接傳入日期字串
- 
+
     print(f"查詢日期：{target_date}")
- 
+
     creds = _load_creds(token_file)
     all_players = []
+
     # Step 1: 取得所有隊伍
     print("取得聯盟隊伍清單...")
     url = BASE_URL + "/league/" + league_id + "/teams?format=json"
@@ -94,13 +95,13 @@ def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
 
     print("找到 " + str(len(team_keys)) + " 支隊伍")
 
-    # Step 2: 每隊抓球員 + 昨日得分（含 player_points 取得正確 Fantasy 積分）
+    # Step 2: 每隊抓球員 + 指定日期得分
     for team_key in team_keys:
         meta = team_meta[team_key]
         url = (
             BASE_URL
             + "/team/" + team_key
-            + "/roster/players/stats;type=date;date=" + today
+            + "/roster/players/stats;type=date;date=" + target_date
             + "?format=json"
         )
 
@@ -113,10 +114,6 @@ def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
             continue
 
         for j in range(player_count):
-            if j == 0:
-                import json 
-                print(json.dumps(players_raw["0"], indent=2, ensure_ascii=False))
-                break
             try:
                 p = players_raw[str(j)]["player"]
                 p_info  = p[0]
@@ -131,12 +128,19 @@ def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
                 if pos in ("BN", "IL", "NA"):
                     continue
 
-                # ✅ 正確取法：直接讀 Fantasy 積分，不加總原始數據
+                # 優先用 player_points（Fantasy 積分），沒有的話加總 stats
                 score = 0.0
                 try:
                     fp_total = p_stats.get("player_points", {}).get("total", None)
                     if fp_total not in (None, "-", ""):
                         score = round(float(fp_total), 1)
+                    else:
+                        stats_list = p_stats.get("player_stats", {}).get("stats", [])
+                        for s in stats_list:
+                            val = s.get("stat", {}).get("value", "0")
+                            if val not in ("-", "", None) and _is_number(val):
+                                score += float(val)
+                        score = round(score, 1)
                 except (TypeError, ValueError):
                     score = 0.0
 
@@ -146,7 +150,7 @@ def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
                     "player":    name,
                     "position":  pos,
                     "score":     score,
-                    "date":      today,
+                    "date":      target_date,
                 })
             except Exception:
                 continue
