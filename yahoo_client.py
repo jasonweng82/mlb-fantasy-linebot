@@ -113,6 +113,8 @@ def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
             print("無法取得 " + meta["team_name"] + " 成績: " + str(e))
             continue
 
+        print(f"=== players_raw keys: {list(players_raw.keys())} ===")
+        print(f"=== {meta['team_name']} player_count: {player_count} ===")
         for j in range(player_count):
             import json
             p_raw = players_raw[str(j)]
