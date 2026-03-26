@@ -28,7 +28,7 @@ def callback():
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     text = event.message.text.strip()
-        )
+        
     if text in ["今日", "戰報"]:
         all_players = get_all_teams_stats(LEAGUE_ID, date="today")
         analysis = analyze_league(all_players)
