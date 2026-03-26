@@ -49,11 +49,24 @@ def _api_get(url, creds, token_file="oauth2.json"):
     return resp.json()
 
 
-def get_all_teams_stats(league_id, token_file="oauth2.json"):
-    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
+    """
+    date 參數：
+      "yesterday" → 昨天（預設，GitHub Action 總結用）
+      "today"     → 今天（LINE Bot 即時查詢用）
+      "2026-03-25" → 指定日期
+    """
+    if date == "yesterday":
+        target_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    elif date == "today":
+        target_date = datetime.now().strftime("%Y-%m-%d")
+    else:
+        target_date = date  # 直接傳入日期字串
+ 
+    print(f"查詢日期：{target_date}")
+ 
     creds = _load_creds(token_file)
     all_players = []
-
     # Step 1: 取得所有隊伍
     print("取得聯盟隊伍清單...")
     url = BASE_URL + "/league/" + league_id + "/teams?format=json"
