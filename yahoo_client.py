@@ -120,20 +120,7 @@ def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
             print(json.dumps(p_raw, indent=2, ensure_ascii=False))
             print("=== END ===")
             break
-                # 球員名字：{"name": {"full": "..."}}
-                name_dict = next((x["name"] for x in p_info if isinstance(x, dict) and "name" in x), {})
-                name = name_dict.get("full", "未知") if isinstance(name_dict, dict) else "未知"
-
-                # 守位：selected_position 是一個 list，裡面找有 "position" key 的 dict
-                pos = "?"
-                for x in p_info:
-                    if isinstance(x, dict) and "selected_position" in x:
-                        for item in x["selected_position"]:
-                            if isinstance(item, dict) and "position" in item:
-                                pos = item["position"]
-                                break
-                        break
-
+           
                 if pos in ("BN", "IL", "NA"):
                     continue
 
