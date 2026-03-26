@@ -119,16 +119,15 @@ def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
                 p_info  = p[0]
                 p_stats = p[1] if len(p) > 1 else {}
 
-                # ✅ 修正：name 在 {"name": {"full": "..."}} 這層
+                # 球員名字：{"name": {"full": "..."}}
                 name_dict = next((x["name"] for x in p_info if isinstance(x, dict) and "name" in x), {})
                 name = name_dict.get("full", "未知") if isinstance(name_dict, dict) else "未知"
 
-                # ✅ 修正：position 在 selected_position 裡
+                # 守位：selected_position 是一個 list，裡面找有 "position" key 的 dict
                 pos = "?"
                 for x in p_info:
                     if isinstance(x, dict) and "selected_position" in x:
-                        sp = x["selected_position"]
-                        for item in sp:
+                        for item in x["selected_position"]:
                             if isinstance(item, dict) and "position" in item:
                                 pos = item["position"]
                                 break
@@ -137,13 +136,16 @@ def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
                 if pos in ("BN", "IL", "NA"):
                     continue
 
-                # 優先用 player_points（Fantasy 積分），沒有的話加總 stats
+                # 分數：優先用 player_points，備用加總 player_stats
                 score = 0.0
                 try:
-                    fp_total = p_stats.get("player_points", {}).get("total", None)
-                    if fp_total not in (None, "-", ""):
-                        score = round(float(fp_total), 1)
+                    # player_points 結構：{"player_points": {"coverage_type": "date", "date": "...", "total": "3.5"}}
+                    pp = p_stats.get("player_points", {})
+                    total = pp.get("total", None)
+                    if total not in (None, "-", ""):
+                        score = round(float(total), 1)
                     else:
+                        # 備用：加總 player_stats
                         stats_list = p_stats.get("player_stats", {}).get("stats", [])
                         for s in stats_list:
                             val = s.get("stat", {}).get("value", "0")
