@@ -109,17 +109,25 @@ def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
             data = _api_get(url, creds, token_file)
             players_raw = data["fantasy_content"]["team"][1]["roster"]["0"]["players"]
             player_count = players_raw["count"]
-            print(f"=== players_raw keys: {list(players_raw.keys())} ===")
             print(f"=== {meta['team_name']} player_count: {player_count} ===")
-       except Exception as e:
+            print(f"=== players_raw keys: {list(players_raw.keys())} ===")
+        except Exception as e:
             print("無法取得 " + meta["team_name"] + " 成績: " + str(e))
             continue
+
         for j in range(player_count):
-            import json
             p_raw = players_raw[str(j)]
             print(f"=== PLAYER {j} RAW ===")
             print(json.dumps(p_raw, indent=2, ensure_ascii=False))
             print("=== END ===")
             break
-           
-                
+
+    return all_players
+
+
+def _is_number(val):
+    try:
+        float(val)
+        return True
+    except (TypeError, ValueError):
+        return False
