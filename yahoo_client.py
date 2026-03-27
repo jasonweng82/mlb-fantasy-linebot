@@ -109,19 +109,57 @@ def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
             data = _api_get(url, creds, token_file)
             players_raw = data["fantasy_content"]["team"][1]["roster"]["0"]["players"]
             player_count = players_raw["count"]
-            print(f"=== {meta['team_name']} player_count: {player_count} ===")
-            print(f"=== players_raw keys: {list(players_raw.keys())} ===")
         except Exception as e:
             print("無法取得 " + meta["team_name"] + " 成績: " + str(e))
             continue
 
         for j in range(player_count):
-            p_raw = players_raw[str(j)]
-            print(f"=== PLAYER {j} RAW ===")
-            print(json.dumps(p_raw, indent=2, ensure_ascii=False))
-            print("=== END ===")
-            break
+            try:
+                p = players_raw[str(j)]["player"]
+                p_info  = p[0]  # list of dicts with player info
+                p_stats = p[1] if len(p) > 1 else {}  # dict with player_stats and player_points
 
+                # 球員名字：p_info 裡找 {"name": {"full": "..."}}
+                name_dict = next((x["name"] for x in p_info if isinstance(x, dict) and "name" in x), {})
+                name = name_dict.get("full", "未知") if isinstance(name_dict, dict) else "未知"
+
+                # 守位：selected_position 是 list，格式為
+                # [{"coverage_type": "date", "date": "..."}, {"position": "C"}, {"is_flex": 0}]
+                pos = "?"
+                for x in p_info:
+                    if isinstance(x, dict) and "selected_position" in x:
+                        for item in x["selected_position"]:
+                            if isinstance(item, dict) and "position" in item:
+                                pos = item["position"]
+                                break
+                        break
+
+                if pos in ("BN", "IL", "NA"):
+                    continue
+
+                # 分數：player_points 格式為
+                # {"0": {"coverage_type": "date", "date": "..."}, "total": 3.5}
+                score = 0.0
+                try:
+                    pp = p_stats.get("player_points", {})
+                    total = pp.get("total", None)
+                    if total not in (None, "-", ""):
+                        score = round(float(total), 1)
+                except (TypeError, ValueError):
+                    score = 0.0
+
+                all_players.append({
+                    "team_name": meta["team_name"],
+                    "manager":   meta["manager"],
+                    "player":    name,
+                    "position":  pos,
+                    "score":     score,
+                    "date":      target_date,
+                })
+            except Exception:
+                continue
+
+    print(f"共取得 {len(all_players)} 位球員的成績")
     return all_players
 
 
