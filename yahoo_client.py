@@ -49,6 +49,34 @@ def _api_get(url, creds, token_file="oauth2.json"):
     return resp.json()
 
 
+def _extract_pos(p_info):
+    """從 p_info list 裡抓 selected_position 的 position 值"""
+    for x in p_info:
+        if not isinstance(x, dict):
+            continue
+        if "selected_position" not in x:
+            continue
+        sp = x["selected_position"]
+        if not isinstance(sp, list):
+            continue
+        for item in sp:
+            if isinstance(item, dict) and "position" in item:
+                return item["position"]
+    return "?"
+
+
+def _extract_score(p_stats):
+    """從 p_stats 抓 Fantasy 積分"""
+    try:
+        pp = p_stats.get("player_points", {})
+        total = pp.get("total", None)
+        if total not in (None, "-", ""):
+            return round(float(total), 1)
+    except (TypeError, ValueError):
+        pass
+    return 0.0
+
+
 def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
     """
     date 參數：
@@ -116,37 +144,24 @@ def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
         for j in range(player_count):
             try:
                 p = players_raw[str(j)]["player"]
-                p_info  = p[0]  # list of dicts with player info
-                p_stats = p[1] if len(p) > 1 else {}  # dict with player_stats and player_points
+                p_info  = p[0]
+                p_stats = p[1] if len(p) > 1 else {}
 
-                # 球員名字：p_info 裡找 {"name": {"full": "..."}}
-                name_dict = next((x["name"] for x in p_info if isinstance(x, dict) and "name" in x), {})
+                # 球員名字
+                name_dict = next(
+                    (x["name"] for x in p_info if isinstance(x, dict) and "name" in x),
+                    {}
+                )
                 name = name_dict.get("full", "未知") if isinstance(name_dict, dict) else "未知"
 
-                # 守位：selected_position 是 list，格式為
-                # [{"coverage_type": "date", "date": "..."}, {"position": "C"}, {"is_flex": 0}]
-                pos = "?"
-                for x in p_info:
-                    if isinstance(x, dict) and "selected_position" in x:
-                        for item in x["selected_position"]:
-                            if isinstance(item, dict) and "position" in item:
-                                pos = item["position"]
-                                break
-                        break
+                # 守位
+                pos = _extract_pos(p_info)
 
                 if pos in ("BN", "IL", "NA"):
                     continue
 
-                # 分數：player_points 格式為
-                # {"0": {"coverage_type": "date", "date": "..."}, "total": 3.5}
-                score = 0.0
-                try:
-                    pp = p_stats.get("player_points", {})
-                    total = pp.get("total", None)
-                    if total not in (None, "-", ""):
-                        score = round(float(total), 1)
-                except (TypeError, ValueError):
-                    score = 0.0
+                # 分數
+                score = _extract_score(p_stats)
 
                 all_players.append({
                     "team_name": meta["team_name"],
