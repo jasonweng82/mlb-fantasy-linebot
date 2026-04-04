@@ -22,6 +22,7 @@ def callback():
     except Exception as e:
         import traceback
         print(f"Webhook error: {e}")
+        print(traceback.format_exc())
         abort(400)
     return "OK"
 
