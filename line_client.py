@@ -5,7 +5,6 @@ LINE Messaging API 客戶端
 import os
 import requests
 
-
 LINE_API_URL = "https://api.line.me/v2/bot/message/push"
 
 
@@ -13,8 +12,8 @@ def push_message(text: str):
     """
     推送純文字訊息到指定的 LINE User ID
     需要環境變數：
-      LINE_CHANNEL_ACCESS_TOKEN  — Messaging API 的 Channel Access Token
-      LINE_USER_ID               — 你自己的 LINE User ID
+        LINE_CHANNEL_ACCESS_TOKEN  - Messaging API 的 Channel Access Token
+        LINE_USER_ID               - 你自己的 LINE User ID
     """
     token   = os.environ["LINE_CHANNEL_ACCESS_TOKEN"]
     user_id = os.environ["LINE_USER_ID"]
