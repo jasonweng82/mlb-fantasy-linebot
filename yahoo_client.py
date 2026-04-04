@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class YahooFantasyClient:
     """
     Yahoo Fantasy Baseball API 封裝
-    負責取得你的 Fantasy 隊伍球員昨日成績
+    負責取得你的 Fantasy 隊伍球員成績
     """
 
     def __init__(self):
@@ -38,17 +38,17 @@ class YahooFantasyClient:
         logger.info(f"✅ 成功連線聯盟: {league_id}")
 
     def get_all_teams_stats(self, league_id: str = None, date: str = "yesterday") -> Optional[list]:
-    """
-    取得聯盟所有隊伍、所有球員成績
-    回傳 list of player dicts
-    """
-    if date == "today":
-        target = datetime.now()
-    else:
-        target = datetime.now() - timedelta(days=1)
+        """
+        取得聯盟所有隊伍、所有球員成績
+        回傳 list of player dicts
+        """
+        if date == "today":
+            target = datetime.now()
+        else:
+            target = datetime.now() - timedelta(days=1)
 
-    date_str = target.strftime("%Y-%m-%d")
-    logger.info(f"📅 查詢日期: {date_str}")
+        date_str = target.strftime("%Y-%m-%d")
+        logger.info(f"📅 查詢日期: {date_str}")
 
         all_players = []
 
@@ -62,7 +62,7 @@ class YahooFantasyClient:
 
                 try:
                     team = self.league.to_team(team_key)
-                    roster = team.roster(day=yesterday)
+                    roster = team.roster(day=target)
                 except Exception as e:
                     logger.warning(f"⚠️ 無法取得 {team_name} 名單: {e}")
                     continue
@@ -86,6 +86,7 @@ class YahooFantasyClient:
                     if stats:
                         stats["team_name"] = team_name
                         stats["team_key"] = team_key
+                        stats["date"] = date_str
                         all_players.append(stats)
 
         except Exception as e:
@@ -96,7 +97,7 @@ class YahooFantasyClient:
         return all_players
 
     def get_yesterday_stats(self) -> Optional[list]:
-        return self.get_all_teams_stats()
+        return self.get_all_teams_stats(date="yesterday")
 
     def _get_player_stats(self, player_id, date_str: str, name: str, position: str) -> Optional[dict]:
         try:
@@ -194,13 +195,12 @@ class YahooFantasyClient:
         hld  = float(stats.get("HLD", 0))
         qs   = float(stats.get("QS", 0))
 
-        # 若 API 回傳 IP 而非 OUT，自動換算
         if out == 0 and stats.get("IP"):
             ip = float(stats.get("IP", 0))
             out = ip * 3
 
         if out == 0:
-            return None  # 沒出賽跳過
+            return None
 
         fpts = (
             (w    *  3.0) +
@@ -241,7 +241,7 @@ class YahooFantasyClient:
         }
 
 
-# ── module-level 入口，供 main.py import 使用 ──
+# ── module-level 入口，供 main.py / app.py import 使用 ──
 _client = None
 
 def _get_client() -> YahooFantasyClient:
