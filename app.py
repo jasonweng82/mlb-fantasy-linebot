@@ -16,9 +16,11 @@ LEAGUE_ID = os.getenv("YAHOO_LEAGUE_ID")
 def callback():
     signature = request.headers["X-Line-Signature"]
     body = request.get_data(as_text=True)
+    print(f"📩 收到 webhook body: {body[:200]}")
     try:
         handler.handle(body, signature)
     except Exception as e:
+        import traceback
         print(f"Webhook error: {e}")
         abort(400)
     return "OK"
