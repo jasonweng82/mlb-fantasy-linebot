@@ -37,14 +37,18 @@ class YahooFantasyClient:
         self.league = self.gm.to_league(league_id)
         logger.info(f"✅ 成功連線聯盟: {league_id}")
 
-    def get_all_teams_stats(self, league_id: str = None) -> Optional[list]:
-        """
-        取得聯盟所有隊伍、所有球員昨日成績
-        回傳 list of player dicts
-        """
-        yesterday = datetime.now() - timedelta(days=1)
-        date_str = yesterday.strftime("%Y-%m-%d")
-        logger.info(f"📅 查詢日期: {date_str}")
+    def get_all_teams_stats(self, league_id: str = None, date: str = "yesterday") -> Optional[list]:
+    """
+    取得聯盟所有隊伍、所有球員成績
+    回傳 list of player dicts
+    """
+    if date == "today":
+        target = datetime.now()
+    else:
+        target = datetime.now() - timedelta(days=1)
+
+    date_str = target.strftime("%Y-%m-%d")
+    logger.info(f"📅 查詢日期: {date_str}")
 
         all_players = []
 
@@ -246,5 +250,5 @@ def _get_client() -> YahooFantasyClient:
         _client = YahooFantasyClient()
     return _client
 
-def get_all_teams_stats(league_id: str = None) -> Optional[list]:
-    return _get_client().get_all_teams_stats(league_id)
+def get_all_teams_stats(league_id: str = None, date: str = "yesterday") -> Optional[list]:
+    return _get_client().get_all_teams_stats(league_id, date=date)
