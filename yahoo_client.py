@@ -1,186 +1,250 @@
-"""
-Yahoo Fantasy Baseball API 客戶端
-直接用 requests 呼叫 Yahoo Fantasy API
-"""
+import os
 import json
-import requests
+import logging
 from datetime import datetime, timedelta
+from typing import Optional
 
-BASE_URL = "https://fantasysports.yahooapis.com/fantasy/v2"
+import yahoo_fantasy_api as yfa
+from yahoo_oauth import OAuth2
 
+logger = logging.getLogger(__name__)
 
-def _load_creds(token_file="oauth2.json"):
-    with open(token_file) as f:
-        return json.load(f)
-
-
-def _get_headers(creds):
-    return {
-        "Authorization": "Bearer " + creds["access_token"],
-        "Accept": "application/json",
-    }
-
-
-def _refresh_token(creds, token_file="oauth2.json"):
-    resp = requests.post(
-        "https://api.login.yahoo.com/oauth2/get_token",
-        auth=(creds["consumer_key"], creds["consumer_secret"]),
-        data={
-            "grant_type": "refresh_token",
-            "refresh_token": creds["refresh_token"],
-        },
-    )
-    if resp.status_code == 200:
-        new = resp.json()
-        creds["access_token"]  = new["access_token"]
-        creds["refresh_token"] = new.get("refresh_token", creds["refresh_token"])
-        with open(token_file, "w") as f:
-            json.dump(creds, f, indent=2)
-        print("Token 已刷新")
-    return creds
-
-
-def _api_get(url, creds, token_file="oauth2.json"):
-    resp = requests.get(url, headers=_get_headers(creds))
-    if resp.status_code == 401:
-        creds = _refresh_token(creds, token_file)
-        resp = requests.get(url, headers=_get_headers(creds))
-    resp.raise_for_status()
-    return resp.json()
-
-
-def _extract_pos(p_info):
-    """從 p_info list 裡抓 selected_position 的 position 值"""
-    for x in p_info:
-        if not isinstance(x, dict):
-            continue
-        if "selected_position" not in x:
-            continue
-        sp = x["selected_position"]
-        if not isinstance(sp, list):
-            continue
-        for item in sp:
-            if isinstance(item, dict) and "position" in item:
-                return item["position"]
-    return "?"
-
-
-def _extract_score(p_stats):
-    """從 p_stats 抓 Fantasy 積分"""
-    try:
-        pp = p_stats.get("player_points", {})
-        total = pp.get("total", None)
-        if total not in (None, "-", ""):
-            return round(float(total), 1)
-    except (TypeError, ValueError):
-        pass
-    return 0.0
-
-
-def get_all_teams_stats(league_id, date="yesterday", token_file="oauth2.json"):
+class YahooFantasyClient:
     """
-    date 參數：
-      "yesterday" → 昨天（預設，GitHub Action 總結用）
-      "today"     → 今天（LINE Bot 即時查詢用）
-      "2026-03-25" → 指定日期
+    Yahoo Fantasy Baseball API 封裝
+    負責取得你的 Fantasy 隊伍球員昨日成績
     """
-    if date == "yesterday":
-        target_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-    elif date == "today":
-        target_date = datetime.now().strftime("%Y-%m-%d")
-    else:
-        target_date = date
 
-    print(f"查詢日期：{target_date}")
+    def __init__(self):
+        oauth_data = {
+            "consumer_key": os.environ["YAHOO_CONSUMER_KEY"],
+            "consumer_secret": os.environ["YAHOO_CONSUMER_SECRET"],
+            "token": os.environ.get("YAHOO_TOKEN", ""),
+            "token_secret": os.environ.get("YAHOO_TOKEN_SECRET", ""),
+        }
 
-    creds = _load_creds(token_file)
-    all_players = []
+        with open("/tmp/oauth2.json", "w") as f:
+            json.dump(oauth_data, f)
 
-    # Step 1: 取得所有隊伍
-    print("取得聯盟隊伍清單...")
-    url = BASE_URL + "/league/" + league_id + "/teams?format=json"
-    data = _api_get(url, creds, token_file)
+        sc = OAuth2(None, None, from_file="/tmp/oauth2.json")
+        self.gm = yfa.Game(sc, "mlb")
 
-    try:
-        teams_raw = data["fantasy_content"]["league"][1]["teams"]
-        team_count = teams_raw["count"]
-    except (KeyError, IndexError) as e:
-        print("無法取得隊伍清單: " + str(e))
-        return []
+        league_ids = self.gm.league_ids()
+        if not league_ids:
+            raise ValueError("找不到 Yahoo Fantasy Baseball 聯盟，請確認帳號有加入聯盟")
 
-    team_keys = []
-    team_meta = {}
+        league_id = os.environ.get("YAHOO_LEAGUE_ID", league_ids[0])
+        self.league = self.gm.to_league(league_id)
+        logger.info(f"✅ 成功連線聯盟: {league_id}")
 
-    for i in range(team_count):
-        t = teams_raw[str(i)]["team"][0]
-        team_key  = next((x["team_key"] for x in t if isinstance(x, dict) and "team_key" in x), None)
-        team_name = next((x["name"]     for x in t if isinstance(x, dict) and "name"     in x), "隊伍" + str(i))
-        managers  = next((x["managers"] for x in t if isinstance(x, dict) and "managers" in x), [])
-        manager   = managers[0]["manager"].get("nickname", "未知") if managers else "未知"
-        if team_key:
-            team_keys.append(team_key)
-            team_meta[team_key] = {"team_name": team_name, "manager": manager}
+    def get_all_teams_stats(self, league_id: str = None) -> Optional[list]:
+        """
+        取得聯盟所有隊伍、所有球員昨日成績
+        回傳 list of player dicts
+        """
+        yesterday = datetime.now() - timedelta(days=1)
+        date_str = yesterday.strftime("%Y-%m-%d")
+        logger.info(f"📅 查詢日期: {date_str}")
 
-    print("找到 " + str(len(team_keys)) + " 支隊伍")
-
-    # Step 2: 每隊抓球員 + 指定日期得分
-    for team_key in team_keys:
-        meta = team_meta[team_key]
-        url = (
-            BASE_URL
-            + "/team/" + team_key
-            + "/roster/players/stats;type=date;date=" + target_date
-            + "?format=json"
-        )
+        all_players = []
 
         try:
-            data = _api_get(url, creds, token_file)
-            players_raw = data["fantasy_content"]["team"][1]["roster"]["0"]["players"]
-            player_count = players_raw["count"]
-        except Exception as e:
-            print("無法取得 " + meta["team_name"] + " 成績: " + str(e))
-            continue
+            teams = self.league.teams()
+            logger.info(f"共找到 {len(teams)} 支隊伍")
 
-        for j in range(player_count):
-            try:
-                p = players_raw[str(j)]["player"]
-                p_info  = p[0]
-                p_stats = p[1] if len(p) > 1 else {}
+            for team_key, team_info in teams.items():
+                team_name = team_info.get("name", team_key)
+                logger.info(f"🔍 處理隊伍: {team_name} ({team_key})")
 
-                # 球員名字
-                name_dict = next(
-                    (x["name"] for x in p_info if isinstance(x, dict) and "name" in x),
-                    {}
-                )
-                name = name_dict.get("full", "未知") if isinstance(name_dict, dict) else "未知"
-
-                # 守位
-                pos = _extract_pos(p_info)
-
-                if pos in ("BN", "IL", "NA"):
+                try:
+                    team = self.league.to_team(team_key)
+                    roster = team.roster(day=yesterday)
+                except Exception as e:
+                    logger.warning(f"⚠️ 無法取得 {team_name} 名單: {e}")
                     continue
 
-                # 分數
-                score = _extract_score(p_stats)
+                if not roster:
+                    logger.warning(f"⚠️ {team_name} 名單為空")
+                    continue
 
-                all_players.append({
-                    "team_name": meta["team_name"],
-                    "manager":   meta["manager"],
-                    "player":    name,
-                    "position":  pos,
-                    "score":     score,
-                    "date":      target_date,
-                })
-            except Exception:
-                continue
+                for player in roster:
+                    player_id = player.get("player_id") or player.get("id")
+                    name = player.get("name")
+                    position = player.get("selected_position", "BN")
 
-    print(f"共取得 {len(all_players)} 位球員的成績")
-    return all_players
+                    if position == "BN":
+                        continue
+
+                    if not player_id or not name:
+                        continue
+
+                    stats = self._get_player_stats(player_id, date_str, name, position)
+                    if stats:
+                        stats["team_name"] = team_name
+                        stats["team_key"] = team_key
+                        all_players.append(stats)
+
+        except Exception as e:
+            logger.error(f"❌ 取得所有隊伍失敗: {e}", exc_info=True)
+            return None
+
+        logger.info(f"✅ 共取得 {len(all_players)} 位球員成績")
+        return all_players
+
+    def get_yesterday_stats(self) -> Optional[list]:
+        return self.get_all_teams_stats()
+
+    def _get_player_stats(self, player_id, date_str: str, name: str, position: str) -> Optional[dict]:
+        try:
+            pid = str(player_id)
+            stats_raw = self.league.player_stats([pid], "date", date=date_str)
+
+            if not stats_raw:
+                return None
+
+            raw = stats_raw[0] if isinstance(stats_raw, list) else stats_raw
+            stat_map = raw.get("stats") or raw.get("stat") or {}
+
+            if isinstance(stat_map, list):
+                stat_map = {s.get("stat_id"): s.get("value", 0) for s in stat_map}
+
+            is_pitcher = position in ["SP", "RP", "P"]
+
+            if is_pitcher:
+                return self._score_pitcher(name, position, stat_map)
+            else:
+                return self._score_batter(name, position, stat_map)
+
+        except Exception as e:
+            logger.warning(f"⚠️ 無法取得 {name} 的成績: {e}")
+            return None
+
+    def _score_batter(self, name: str, position: str, stats: dict) -> dict:
+        """野手評分（依你的聯盟計分）"""
+        r    = float(stats.get("R", 0))
+        b1   = float(stats.get("1B", 0))
+        b2   = float(stats.get("2B", 0))
+        b3   = float(stats.get("3B", 0))
+        hr   = float(stats.get("HR", 0))
+        rbi  = float(stats.get("RBI", 0))
+        sb   = float(stats.get("SB", 0))
+        cs   = float(stats.get("CS", 0))
+        bb   = float(stats.get("BB", 0))
+        hbp  = float(stats.get("HBP", 0))
+        so   = float(stats.get("SO", 0))
+        gidp = float(stats.get("GIDP", 0))
+
+        fpts = (
+            (r    *  1.0) +
+            (b1   *  2.6) +
+            (b2   *  5.2) +
+            (b3   *  7.8) +
+            (hr   * 10.4) +
+            (rbi  *  1.0) +
+            (sb   *  3.5) +
+            (cs   * -0.5) +
+            (bb   *  2.6) +
+            (hbp  *  2.6) +
+            (so   * -0.5) +
+            (gidp * -1.0)
+        )
+
+        ab = float(stats.get("AB", 0))
+        hits = b1 + b2 + b3 + hr
+        avg = f"{hits/ab:.3f}" if ab > 0 else ".000"
+
+        key_stats = f"{int(hits)}/{int(ab)} {avg}"
+        if hr > 0:
+            key_stats += f", {int(hr)}HR"
+        if rbi > 0:
+            key_stats += f", {int(rbi)}RBI"
+        if sb > 0:
+            key_stats += f", {int(sb)}SB"
+        if bb > 0:
+            key_stats += f", {int(bb)}BB"
+        if hbp > 0:
+            key_stats += f", {int(hbp)}HBP"
+
+        grade = "hot" if fpts >= 8 else ("cold" if fpts <= 0 and ab >= 3 else "normal")
+
+        return {
+            "name": name,
+            "position": position,
+            "key_stats": key_stats,
+            "fpts": round(fpts, 1),
+            "grade": grade,
+            "type": "batter",
+        }
+
+    def _score_pitcher(self, name: str, position: str, stats: dict) -> dict:
+        """投手評分（依你的聯盟計分）"""
+        w    = float(stats.get("W", 0))
+        sv   = float(stats.get("SV", 0))
+        out  = float(stats.get("OUT", 0))
+        h    = float(stats.get("H", 0))
+        er   = float(stats.get("ER", 0))
+        bb   = float(stats.get("BB", 0))
+        hbp  = float(stats.get("HBP", 0))
+        k    = float(stats.get("K", 0))
+        gidp = float(stats.get("GIDP", 0))
+        hld  = float(stats.get("HLD", 0))
+        qs   = float(stats.get("QS", 0))
+
+        # 若 API 回傳 IP 而非 OUT，自動換算
+        if out == 0 and stats.get("IP"):
+            ip = float(stats.get("IP", 0))
+            out = ip * 3
+
+        if out == 0:
+            return None  # 沒出賽跳過
+
+        fpts = (
+            (w    *  3.0) +
+            (sv   *  6.0) +
+            (out  *  1.0) +
+            (h    * -1.3) +
+            (er   * -2.5) +
+            (bb   * -1.3) +
+            (hbp  * -1.3) +
+            (k    *  2.0) +
+            (gidp *  1.0) +
+            (hld  *  5.0) +
+            (qs   *  6.0)
+        )
+
+        ip_display = out / 3
+        key_stats = f"{ip_display:.1f}IP, {int(k)}K"
+        if w:
+            key_stats += ", W"
+        if sv:
+            key_stats += ", SV"
+        if hld:
+            key_stats += ", HLD"
+        if qs:
+            key_stats += ", QS"
+        if er > 0:
+            key_stats += f", {int(er)}ER"
+
+        grade = "hot" if fpts >= 12 else ("cold" if er >= 4 else "normal")
+
+        return {
+            "name": name,
+            "position": position,
+            "key_stats": key_stats,
+            "fpts": round(fpts, 1),
+            "grade": grade,
+            "type": "pitcher",
+        }
 
 
-def _is_number(val):
-    try:
-        float(val)
-        return True
-    except (TypeError, ValueError):
-        return False
+# ── module-level 入口，供 main.py import 使用 ──
+_client = None
+
+def _get_client() -> YahooFantasyClient:
+    global _client
+    if _client is None:
+        _client = YahooFantasyClient()
+    return _client
+
+def get_all_teams_stats(league_id: str = None) -> Optional[list]:
+    return _get_client().get_all_teams_stats(league_id)
