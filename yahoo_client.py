@@ -16,26 +16,27 @@ class YahooFantasyClient:
     """
 
     def __init__(self):
-        oauth_data = {
-            "consumer_key": os.environ["YAHOO_CONSUMER_KEY"],
-            "consumer_secret": os.environ["YAHOO_CONSUMER_SECRET"],
-            "token": os.environ.get("YAHOO_TOKEN", ""),
-            "token_secret": os.environ.get("YAHOO_TOKEN_SECRET", ""),
-        }
+    oauth_data = {
+        "consumer_key": os.environ["YAHOO_CONSUMER_KEY"],
+        "consumer_secret": os.environ["YAHOO_CONSUMER_SECRET"],
+        "access_token": os.environ["YAHOO_TOKEN"],
+        "refresh_token": os.environ.get("YAHOO_TOKEN_SECRET", ""),
+        "token_type": "bearer",
+    }
 
-        with open("/tmp/oauth2.json", "w") as f:
-            json.dump(oauth_data, f)
+    with open("/tmp/oauth2.json", "w") as f:
+        json.dump(oauth_data, f)
 
-        sc = OAuth2(None, None, from_file="/tmp/oauth2.json")
-        self.gm = yfa.Game(sc, "mlb")
+    sc = OAuth2(None, None, from_file="/tmp/oauth2.json")
+    self.gm = yfa.Game(sc, "mlb")
 
-        league_ids = self.gm.league_ids()
-        if not league_ids:
-            raise ValueError("找不到 Yahoo Fantasy Baseball 聯盟，請確認帳號有加入聯盟")
+    league_ids = self.gm.league_ids()
+    if not league_ids:
+        raise ValueError("找不到 Yahoo Fantasy Baseball 聯盟，請確認帳號有加入聯盟")
 
-        league_id = os.environ.get("YAHOO_LEAGUE_ID", league_ids[0])
-        self.league = self.gm.to_league(league_id)
-        logger.info(f"✅ 成功連線聯盟: {league_id}")
+    league_id = os.environ.get("YAHOO_LEAGUE_ID", league_ids[0])
+    self.league = self.gm.to_league(league_id)
+    logger.info(f"✅ 成功連線聯盟: {league_id}")
 
     def get_all_teams_stats(self, league_id: str = None, date: str = "yesterday") -> Optional[list]:
         """
