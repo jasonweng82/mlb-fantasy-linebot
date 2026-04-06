@@ -12,6 +12,10 @@ configuration = Configuration(access_token=os.getenv("LINE_CHANNEL_ACCESS_TOKEN"
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 LEAGUE_ID = os.getenv("YAHOO_LEAGUE_ID")
 
+@app.route("/", methods=["GET"])
+def health_check():
+    return "OK", 200
+
 @app.route("/callback", methods=["POST"])
 def callback():
     signature = request.headers["X-Line-Signature"]
