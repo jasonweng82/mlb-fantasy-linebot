@@ -16,16 +16,12 @@ class YahooFantasyClient:
     """
 
     def __init__(self):
-        oauth_data = {
-            "consumer_key": os.environ["YAHOO_CONSUMER_KEY"],
-            "consumer_secret": os.environ["YAHOO_CONSUMER_SECRET"],
-            "access_token": os.environ["YAHOO_TOKEN"],
-            "refresh_token": os.environ.get("YAHOO_TOKEN_SECRET", ""),
-            "token_type": "bearer",
-        }
-
-        with open("/tmp/oauth2.json", "w") as f:
-            json.dump(oauth_data, f)
+        oauth2_json = os.environ.get("OAUTH2_JSON")
+        if oauth2_json:
+            with open("/tmp/oauth2.json", "w") as f:
+                f.write(oauth2_json)
+        else:
+            raise ValueError("缺少 OAUTH2_JSON 環境變數")
 
         sc = OAuth2(None, None, from_file="/tmp/oauth2.json")
         self.gm = yfa.Game(sc, "mlb")
